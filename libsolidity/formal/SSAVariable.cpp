@@ -31,3 +31,10 @@ void SSAVariable::resetIndex()
 	m_currentIndex = 0;
 	m_nextFreeIndex = make_unique<unsigned>(1);
 }
+
+void SSAVariable::setIndex(unsigned _index)
+{
+	m_currentIndex = _index;
+	if (*m_nextFreeIndex <= _index)
+		m_nextFreeIndex = make_unique<unsigned>(_index + 1);
+}
