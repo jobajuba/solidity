@@ -774,14 +774,6 @@ void IRGeneratorForStatements::endVisit(FunctionCall const& _functionCall)
 			"))\n";
 		break;
 	}
-	case FunctionType::Kind::ECRecover:
-	case FunctionType::Kind::SHA256:
-	case FunctionType::Kind::RIPEMD160:
-	{
-		solAssert(!_functionCall.annotation().tryCall, "");
-		appendExternalFunctionCall(_functionCall, arguments);
-		break;
-	}
 	case FunctionType::Kind::ArrayPop:
 	{
 		auto const& memberAccessExpression = dynamic_cast<MemberAccess const&>(_functionCall.expression()).expression();
@@ -971,6 +963,50 @@ void IRGeneratorForStatements::endVisit(FunctionCall const& _functionCall)
 			templ("success", IRVariable(_functionCall).commaSeparatedList());
 		templ("isTransfer", functionType->kind() == FunctionType::Kind::Transfer);
 		templ("forwardingRevert", m_utils.forwardingRevertFunction());
+		m_code << templ.render();
+
+		break;
+	}
+	case FunctionType::Kind::ECRecover:
+	case FunctionType::Kind::RIPEMD160:
+	case FunctionType::Kind::SHA256:
+	{
+		static map<FunctionType::Kind, std::tuple<u160, size_t>> precompiles = {
+			{FunctionType::Kind::ECRecover, std::make_tuple(1, 12)},
+			{FunctionType::Kind::SHA256, std::make_tuple(2, 0)},
+			{FunctionType::Kind::RIPEMD160, std::make_tuple(3, 12)},
+		};
+		auto [ address, offset ] = precompiles[functionType->kind()];
+		TypePointers argumentTypes;
+		vector<string> argumentStrings;
+		for (auto const& arg: arguments)
+		{
+			argumentTypes.emplace_back(&type(*arg));
+			if (IRVariable(*arg).type().sizeOnStack() > 0)
+				argumentStrings.emplace_back(IRVariable(*arg).commaSeparatedList());
+		}
+		string argumentString = argumentStrings.empty() ? ""s : (", " + joinHumanReadable(argumentStrings));
+		ABIFunctions abi(m_context.evmVersion(), m_context.revertStrings(), m_context.functionCollector());
+		Whiskers templ(R"(
+			let <pos> := <freeMemory>
+			let <end> := <encodeArgs>(<pos> <argumentString>)
+			let <success> := <call>(gas(), <address> <?isCall>, 0</isCall>, <pos>, sub(<end>, <pos>), 0, 32)
+			let <retVars>
+			if <success> {
+				<retVars> := <shl>(mload(0))
+			}
+		)");
+		templ("call", m_context.evmVersion().hasStaticCall() ? "staticcall" : "call");
+		templ("isCall", !m_context.evmVersion().hasStaticCall());
+		templ("shl", m_utils.shiftLeftFunction(offset * 8));
+		templ("freeMemory", freeMemory());
+		templ("pos", m_context.newYulVariable());
+		templ("end", m_context.newYulVariable());
+		templ("encodeArgs", abi.tupleEncoderPacked(argumentTypes, parameterTypes));
+		templ("argumentString", argumentString);
+		templ("address", toString(address));
+		templ("success", m_context.newYulVariable());
+		templ("retVars", IRVariable(_functionCall).commaSeparatedList());
 		m_code << templ.render();
 
 		break;
