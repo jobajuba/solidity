@@ -9,6 +9,7 @@ Compiler Features:
 
 
 Bugfixes:
+ * Yul assembler: Fix source location of variable declarations without value.
 
 
 
