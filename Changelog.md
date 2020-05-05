@@ -9,6 +9,8 @@ Compiler Features:
 
 
 Bugfixes:
+ * Fixed an "Assembly Exception in Bytecode" error where requested functions
+   were generated twice.
 
 
 
