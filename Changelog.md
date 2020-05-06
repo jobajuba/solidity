@@ -9,6 +9,8 @@ Compiler Features:
 
 
 Bugfixes:
+ * Type Checker: Added check that runtimeCode can't be accessed for contracts
+   that use immutable state variables
 
 
 

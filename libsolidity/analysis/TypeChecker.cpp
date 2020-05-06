@@ -2587,9 +2587,16 @@ bool TypeChecker::visit(MemberAccess const& _memberAccess)
 		))
 		{
 			annotation.isPure = true;
-			m_scope->annotation().contractDependencies.insert(
-				&dynamic_cast<ContractType const&>(*magicType->typeArgument()).contractDefinition()
-			);
+			ContractDefinition const& accessedContract = dynamic_cast<ContractType const&>(*magicType->typeArgument()).contractDefinition();
+			m_scope->annotation().contractDependencies.insert(&accessedContract);
+
+			for (VariableDeclaration const* variable: accessedContract.stateVariablesIncludingInherited())
+				if (variable->immutable())
+					m_errorReporter.typeError(
+						_memberAccess.location(),
+						"\"runtimeCode\" isn't available for contracts containing immutable variables."
+					);
+
 			if (contractDependenciesAreCyclic(*m_scope))
 				m_errorReporter.typeError(
 					_memberAccess.location(),
