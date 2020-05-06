@@ -20,6 +20,8 @@ contract C {
 	createWithValue(type(B3).creationCode);
     }
 }
+// ====
+// compileViaYul: also
 // ----
 // f(), 2000 ether ->
 // g(), 2000 ether ->
