@@ -9,7 +9,7 @@ Compiler Features:
 
 
 Bugfixes:
-
+ * Add callvalue check for implicit constructors.
 
 
 
